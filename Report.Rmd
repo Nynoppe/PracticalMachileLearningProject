@@ -1,0 +1,144 @@
+---
+title: "Practical Machine Learning Project"
+author: "Nymfa Noppe"
+date: "Saturday, April 25, 2015"
+output: html_document
+---
+
+This document describes the analysis done to find an appropriate model to predict the manner in which the exercise was done based on several available parameters. The data available for this project comes from http://groupware.les.inf.puc-rio.br/har. In this analysis models with several methods (classification tree, random forest, linear discriminant analysis, naive bayes and gradient boosting method) are built and compared to each other based on their accuracies. Finally an out of sample error is calculated. 
+
+The first step is to include all needed libraries and load the training dataset, needed to built the model. After that the output variable classe is set to the type 'factor' and the dimension of the dataset is plotted as well.
+
+```{r, results="hide", warning=FALSE, message=FALSE}
+library(lattice)
+library(ggplot2)
+library(caret)
+library(rpart)
+library(randomForest)
+library(MASS)
+library(survival)
+library(splines)
+library(gbm)
+library(parallel)
+library(plyr)
+library(klaR)
+pmltraining = read.csv("pml-training.csv", na.strings=c("NA",""))
+pmltraining$classe <- factor(pmltraining$classe)
+```
+```{r}
+dim(pmltraining)
+```
+
+As one can see 19622 samples are available with 160 variables. To minimize the number of variables, a first step is to exclude those for which the value is NA in more than 75% of the samples: if the value for a variable is missing most of the time, this variable cannot be useful for the model. After that the names of the remaining columns are shown. 
+
+```{r, results="hide", warning=FALSE, message=FALSE}
+Nr_NA <- apply(pmltraining, 2, function(x) length(which(is.na(x))))
+sum(Nr_NA>0.75*nrow(pmltraining))
+pmltraining <- pmltraining[,!(Nr_NA>0.75*nrow(pmltraining))]
+Columnnames <- colnames(pmltraining)
+```
+```{r}
+Columnnames
+```
+
+Taking a look at those names, one can see and understand that the first 7 columns are not useful for model either, so those columns are also excluded from the training set. 
+After that one can also check if none of the remaining variables have small variability in them.
+
+```{r,results="hide", warning=FALSE, message=FALSE}
+pmltraining <- pmltraining[,8:length(Columnnames)]
+nsv <- nearZeroVar(pmltraining, saveMetrics=TRUE)
+```
+```{r}
+nsv
+```
+
+Since the result for every variable is "FALSE", none of the remaining variables have small variability. 
+After that the dataset can be divided into a training (60% of the total dataset), a testing set (20% of the total dataset) and a validation set (20% of the total dataset). The training set will be used to train the models, the testing set will be used to compare the models to each other and the validation set to calculate the out of sample error.
+
+```{r,results="hide", warning=FALSE, message=FALSE}
+inTrain <- createDataPartition(y=pmltraining$classe, p=0.60, list=FALSE)
+training <- pmltraining[inTrain,]
+remaining <- pmltraining[-inTrain,]
+inValidation <- createDataPartition(y=remaining$classe, p=0.50, list=FALSE)
+validation <- remaining[inValidation,]
+testing <- remaining[-inValidation,]
+```
+
+Then several models are built, using different methods: classification tree, random forest, linear discriminant analysis, naive bayes and gradient boosting method. For all of them k-fold cross-validation (k=8) is used as resampling method and they are all calculated once without preprocessing and once with preprocessing.
+
+```{r,results="hide", warning=FALSE, message=FALSE}
+# no preprocessing
+Model_Tree <- train(classe ~ ., data=training, method="rpart", trControl = trainControl(method="cv",number=8))
+Model_RF <- train(classe ~ ., data=training, method="rf", prox=TRUE, trControl = trainControl(method="cv",number=8))
+Model_lda <- train(classe ~ ., data=training, method="lda", trControl = trainControl(method="cv",number=8))
+Model_gbm <- train(classe ~ ., data=training, method="gbm", verbose=FALSE, trControl = trainControl(method="cv",number=8))
+Model_nb <- train(classe ~ ., data=training, method="nb", trControl = trainControl(method="cv",number=8))
+# preprocessing
+ModelPP_Tree <- train(classe ~ ., data=training, method="rpart", trControl = trainControl(method="cv",number=8), preProcess = c("center","scale"))
+ModelPP_RF <- train(classe ~ ., data=training, method="rf", prox=TRUE, trControl = trainControl(method="cv",number=8), preProcess = c("center","scale"))
+ModelPP_lda <- train(classe ~ ., data=training, method="lda", trControl = trainControl(method="cv",number=8), preProcess = c("center","scale"))
+ModelPP_gbm <- train(classe ~ ., data=training, method="gbm", verbose=FALSE, trControl = trainControl(method="cv",number=8), preProcess = c("center","scale"))
+ModelPP_nb <- train(classe ~ ., data=training, method="nb", trControl = trainControl(method="cv",number=8), preProcess = c("center","scale"))
+```
+
+In the next step, every model predicts the output for every sample of the training set and these predictions are compared to the actual output by calculating the accuracy of the model on the training set.
+
+```{r,results="hide", warning=FALSE, message=FALSE}
+Pred_Tree <- predict(Model_Tree, newdata=training);Acc_Tree <- sum(Pred_Tree == training$classe)/length(Pred_Tree)
+Pred_RF <- predict(Model_RF, newdata=training);Acc_RF <- sum(Pred_RF == training$classe)/length(Pred_RF)
+Pred_lda <- predict(Model_lda, newdata=training);Acc_lda <- sum(Pred_lda == training$classe)/length(Pred_lda)
+Pred_gbm <- predict(Model_gbm, newdata=training);Acc_gbm <- sum(Pred_gbm == training$classe)/length(Pred_gbm)
+Pred_nb <- predict(Model_nb, newdata=training);Acc_nb <- sum(Pred_nb == training$classe)/length(Pred_nb)
+PredPP_Tree <- predict(ModelPP_Tree, newdata=training);AccPP_Tree <- sum(PredPP_Tree == training$classe)/length(PredPP_Tree)
+PredPP_RF <- predict(ModelPP_RF, newdata=training);AccPP_RF <- sum(PredPP_RF == training$classe)/length(PredPP_RF)
+PredPP_lda <- predict(ModelPP_lda, newdata=training);AccPP_lda <- sum(PredPP_lda == training$classe)/length(PredPP_lda)
+PredPP_gbm <- predict(ModelPP_gbm, newdata=training);AccPP_gbm <- sum(PredPP_gbm == training$classe)/length(PredPP_gbm)
+PredPP_nb <- predict(ModelPP_nb, newdata=training);AccPP_nb <- sum(PredPP_nb == training$classe)/length(PredPP_nb)
+TrainAccurracies <- matrix(c(Acc_Tree,Acc_RF,Acc_lda,Acc_gbm,Acc_nb,AccPP_Tree,AccPP_RF,AccPP_lda,AccPP_gbm,AccPP_nb), ncol = 5)
+colnames(TrainAccurracies) <- c("classification tree", "random forest", "linear discriminant analysis", "naive bayes", "gradient boosting method")
+rownames(TrainAccurracies) <- c("accuracy without preProcessing (training set)","accuracy with preProcessing (training set)")
+```
+```{r}
+TrainAccurracies
+```
+
+The same is done for the testing set by calculating the accuracy of the model on the testing set.
+
+```{r,results="hide", warning=FALSE, message=FALSE}
+Pred_Tree <- predict(Model_Tree, newdata=testing);Acc_Tree <- sum(Pred_Tree == testing$classe)/length(Pred_Tree)
+Pred_RF <- predict(Model_RF, newdata=testing);Acc_RF <- sum(Pred_RF == testing$classe)/length(Pred_RF)
+Pred_lda <- predict(Model_lda, newdata=testing);Acc_lda <- sum(Pred_lda == testing$classe)/length(Pred_lda)
+Pred_gbm <- predict(Model_gbm, newdata=testing);Acc_gbm <- sum(Pred_gbm == testing$classe)/length(Pred_gbm)
+Pred_nb <- predict(Model_nb, newdata=testing);Acc_nb <- sum(Pred_nb == testing$classe)/length(Pred_nb)
+PredPP_Tree <- predict(ModelPP_Tree, newdata=testing);AccPP_Tree <- sum(PredPP_Tree == testing$classe)/length(PredPP_Tree)
+PredPP_RF <- predict(ModelPP_RF, newdata=testing);AccPP_RF <- sum(PredPP_RF == testing$classe)/length(PredPP_RF)
+PredPP_lda <- predict(ModelPP_lda, newdata=testing);AccPP_lda <- sum(PredPP_lda == testing$classe)/length(PredPP_lda)
+PredPP_gbm <- predict(ModelPP_gbm, newdata=testing);AccPP_gbm <- sum(PredPP_gbm == testing$classe)/length(PredPP_gbm)
+PredPP_nb <- predict(ModelPP_nb, newdata=testing);AccPP_nb <- sum(PredPP_nb == testing$classe)/length(PredPP_nb)
+TestAccurracies <- matrix(c(Acc_Tree,Acc_RF,Acc_lda,Acc_gbm,Acc_nb,AccPP_Tree,AccPP_RF,AccPP_lda,AccPP_gbm,AccPP_nb), ncol = 5)
+colnames(TestAccurracies) <- c("classification tree", "random forest", "linear discriminant analysis", "naive bayes", "gradient boosting method")
+rownames(TestAccurracies) <- c("accuracy without preProcessing (testing set)","accuracy with preProcessing (testing set)")
+```
+```{r}
+TestAccurracies
+```
+
+Now one can see, even based on the accuracy in the training set, classification tree without preprocessing, random forest without preprocessing, linear discriminant analysis (with or without preprocessing), naive bayes with preprocessing and gradient boosting method with preprocessing can already eliminated due to worse results. Naive bayes without preprocessing gives the highest accuracy for the testing set and is thus considered to be the best model. Hence, this model will be used to predict the output based on the given test set. First the out of sample error is calculated using the validation set:
+
+```{r,results="hide", warning=FALSE, message=FALSE}
+Pred_nb <- predict(Model_nb, newdata=validation);Acc_nb <- sum(Pred_nb == validation$classe)/length(Pred_nb)
+OutOfSampleError <- 1-Acc_nb
+```
+```{r}
+OutOfSampleError
+```
+
+Now the given test set can be loaded and the model can be used to make the predictions based on this test set.
+```{r,results="hide", warning=FALSE, message=FALSE}
+pmltesting = read.csv("pml-testing.csv", na.strings=c("NA",""))
+Pred_nb <- predict(Model_nb, newdata=pmltesting)
+```
+```{r}
+Pred_nb
+```
+
