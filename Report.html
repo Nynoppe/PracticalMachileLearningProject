@@ -170,12 +170,13 @@ nsv &lt;- nearZeroVar(pmltraining, saveMetrics=TRUE)</code></pre>
 ## magnet_forearm_z      1.000000     8.5771073   FALSE FALSE
 ## classe                1.469581     0.0254816   FALSE FALSE</code></pre>
 <p>Since the result for every variable is “FALSE”, none of the remaining variables have small variability. After that the dataset can be divided into a training (60% of the total dataset), a testing set (20% of the total dataset) and a validation set (20% of the total dataset). The training set will be used to train the models, the testing set will be used to compare the models to each other and the validation set to calculate the out of sample error.</p>
-<pre class="r"><code>inTrain &lt;- createDataPartition(y=pmltraining$classe, p=0.60, list=FALSE)
+<pre class="r"><code>set.seed(32323)
+inTrain &lt;- createDataPartition(y=pmltraining$classe, p=0.60, list=FALSE)
 training &lt;- pmltraining[inTrain,]
 remaining &lt;- pmltraining[-inTrain,]
-inValidation &lt;- createDataPartition(y=remaining$classe, p=0.50, list=FALSE)
-validation &lt;- remaining[inValidation,]
-testing &lt;- remaining[-inValidation,]</code></pre>
+inTest &lt;- createDataPartition(y=remaining$classe, p=0.50, list=FALSE)
+testing &lt;- remaining[inTest,]
+validation &lt;- remaining[-inTest,]</code></pre>
 <p>Then several models are built, using different methods: classification tree, random forest, linear discriminant analysis, naive bayes and gradient boosting method. For all of them k-fold cross-validation (k=8) is used as resampling method and they are all calculated once without preprocessing and once with preprocessing.</p>
 <pre class="r"><code># no preprocessing
 Model_Tree &lt;- train(classe ~ ., data=training, method=&quot;rpart&quot;, trControl = trainControl(method=&quot;cv&quot;,number=8))
@@ -200,25 +201,25 @@ PredPP_RF &lt;- predict(ModelPP_RF, newdata=training);AccPP_RF &lt;- sum(PredPP_
 PredPP_lda &lt;- predict(ModelPP_lda, newdata=training);AccPP_lda &lt;- sum(PredPP_lda == training$classe)/length(PredPP_lda)
 PredPP_gbm &lt;- predict(ModelPP_gbm, newdata=training);AccPP_gbm &lt;- sum(PredPP_gbm == training$classe)/length(PredPP_gbm)
 PredPP_nb &lt;- predict(ModelPP_nb, newdata=training);AccPP_nb &lt;- sum(PredPP_nb == training$classe)/length(PredPP_nb)
-TrainAccurracies &lt;- matrix(c(Acc_Tree,Acc_RF,Acc_lda,Acc_gbm,Acc_nb,AccPP_Tree,AccPP_RF,AccPP_lda,AccPP_gbm,AccPP_nb), ncol = 5)
+TrainAccurracies &lt;- matrix(c(Acc_Tree,AccPP_Tree,Acc_RF,AccPP_RF,Acc_lda,AccPP_lda,Acc_gbm,AccPP_gbm,Acc_nb,AccPP_nb), ncol = 5)
 colnames(TrainAccurracies) &lt;- c(&quot;classification tree&quot;, &quot;random forest&quot;, &quot;linear discriminant analysis&quot;, &quot;naive bayes&quot;, &quot;gradient boosting method&quot;)
 rownames(TrainAccurracies) &lt;- c(&quot;accuracy without preProcessing (training set)&quot;,&quot;accuracy with preProcessing (training set)&quot;)</code></pre>
 <pre class="r"><code>TrainAccurracies</code></pre>
 <pre><code>##                                               classification tree
-## accuracy without preProcessing (training set)           0.4986413
-## accuracy with preProcessing (training set)              1.0000000
+## accuracy without preProcessing (training set)            0.559358
+## accuracy with preProcessing (training set)               0.559358
 ##                                               random forest
-## accuracy without preProcessing (training set)     0.7072011
-## accuracy with preProcessing (training set)        0.9758832
+## accuracy without preProcessing (training set)             1
+## accuracy with preProcessing (training set)                1
 ##                                               linear discriminant analysis
-## accuracy without preProcessing (training set)                    0.7538213
-## accuracy with preProcessing (training set)                       0.4986413
+## accuracy without preProcessing (training set)                    0.7121264
+## accuracy with preProcessing (training set)                       0.7121264
 ##                                               naive bayes
-## accuracy without preProcessing (training set)    1.000000
-## accuracy with preProcessing (training set)       0.707286
+## accuracy without preProcessing (training set)   0.9752887
+## accuracy with preProcessing (training set)      0.9743546
 ##                                               gradient boosting method
-## accuracy without preProcessing (training set)                0.9735904
-## accuracy with preProcessing (training set)                   0.7536515</code></pre>
+## accuracy without preProcessing (training set)                0.7491508
+## accuracy with preProcessing (training set)                   0.7489810</code></pre>
 <p>The same is done for the testing set by calculating the accuracy of the model on the testing set.</p>
 <pre class="r"><code>Pred_Tree &lt;- predict(Model_Tree, newdata=testing);Acc_Tree &lt;- sum(Pred_Tree == testing$classe)/length(Pred_Tree)
 Pred_RF &lt;- predict(Model_RF, newdata=testing);Acc_RF &lt;- sum(Pred_RF == testing$classe)/length(Pred_RF)
@@ -230,36 +231,152 @@ PredPP_RF &lt;- predict(ModelPP_RF, newdata=testing);AccPP_RF &lt;- sum(PredPP_R
 PredPP_lda &lt;- predict(ModelPP_lda, newdata=testing);AccPP_lda &lt;- sum(PredPP_lda == testing$classe)/length(PredPP_lda)
 PredPP_gbm &lt;- predict(ModelPP_gbm, newdata=testing);AccPP_gbm &lt;- sum(PredPP_gbm == testing$classe)/length(PredPP_gbm)
 PredPP_nb &lt;- predict(ModelPP_nb, newdata=testing);AccPP_nb &lt;- sum(PredPP_nb == testing$classe)/length(PredPP_nb)
-TestAccurracies &lt;- matrix(c(Acc_Tree,Acc_RF,Acc_lda,Acc_gbm,Acc_nb,AccPP_Tree,AccPP_RF,AccPP_lda,AccPP_gbm,AccPP_nb), ncol = 5)
+TestAccurracies &lt;- matrix(c(Acc_Tree,AccPP_Tree,Acc_RF,AccPP_RF,Acc_lda,AccPP_lda,Acc_gbm,AccPP_gbm,Acc_nb,AccPP_nb), ncol = 5)
 colnames(TestAccurracies) &lt;- c(&quot;classification tree&quot;, &quot;random forest&quot;, &quot;linear discriminant analysis&quot;, &quot;naive bayes&quot;, &quot;gradient boosting method&quot;)
 rownames(TestAccurracies) &lt;- c(&quot;accuracy without preProcessing (testing set)&quot;,&quot;accuracy with preProcessing (testing set)&quot;)</code></pre>
 <pre class="r"><code>TestAccurracies</code></pre>
 <pre><code>##                                              classification tree
-## accuracy without preProcessing (testing set)           0.4886566
-## accuracy with preProcessing (testing set)              0.9918430
+## accuracy without preProcessing (testing set)           0.5546775
+## accuracy with preProcessing (testing set)              0.5546775
 ##                                              random forest
-## accuracy without preProcessing (testing set)     0.7022687
-## accuracy with preProcessing (testing set)        0.9615090
+## accuracy without preProcessing (testing set)     0.9913332
+## accuracy with preProcessing (testing set)        0.9910783
 ##                                              linear discriminant analysis
-## accuracy without preProcessing (testing set)                    0.7463676
-## accuracy with preProcessing (testing set)                       0.4886566
+## accuracy without preProcessing (testing set)                    0.6971705
+## accuracy with preProcessing (testing set)                       0.6971705
 ##                                              naive bayes
-## accuracy without preProcessing (testing set)   0.9923528
-## accuracy with preProcessing (testing set)      0.7022687
+## accuracy without preProcessing (testing set)   0.9602345
+## accuracy with preProcessing (testing set)      0.9594698
 ##                                              gradient boosting method
-## accuracy without preProcessing (testing set)                0.9602345
-## accuracy with preProcessing (testing set)                   0.7458578</code></pre>
-<p>Now one can see, even based on the accuracy in the training set, classification tree without preprocessing, random forest without preprocessing, linear discriminant analysis (with or without preprocessing), naive bayes with preprocessing and gradient boosting method with preprocessing can already eliminated due to worse results. Naive bayes without preprocessing gives the highest accuracy for the testing set and is thus considered to be the best model. Hence, this model will be used to predict the output based on the given test set. First the out of sample error is calculated using the validation set:</p>
-<pre class="r"><code>Pred_nb &lt;- predict(Model_nb, newdata=validation);Acc_nb &lt;- sum(Pred_nb == validation$classe)/length(Pred_nb)
-OutOfSampleError &lt;- 1-Acc_nb</code></pre>
+## accuracy without preProcessing (testing set)                0.7405047
+## accuracy with preProcessing (testing set)                   0.7399949</code></pre>
+<p>Now one can see, even based on the accuracy in the training set, classification tree (with or without preprocessing), linear discriminant analysis (with or without preprocessing), gradient boosting method (with or without preprocessing) can already eliminated due to worse results. Naive bayes without preprocessing gives the highest accuracy for the testing set and is thus considered to be the best model. Hence, this model will be used to predict the output based on the given test set. First the out of sample error is calculated:</p>
+<pre class="r"><code>Pred_RF &lt;- predict(Model_RF, newdata=validation);Acc_RF &lt;- sum(Pred_RF == validation$classe)/length(Pred_RF)
+OutOfSampleError &lt;- 1-Acc_RF</code></pre>
 <pre class="r"><code>OutOfSampleError</code></pre>
-<pre><code>## [1] 0.268417</code></pre>
-<p>Now the given test set can be loaded and the model can be used to make the predictions based on this test set.</p>
+<pre><code>## [1] 0.01147081</code></pre>
+<p>Now the given test set can be loaded and the last model can be used to make the predictions based on this test set.</p>
 <pre class="r"><code>pmltesting = read.csv(&quot;pml-testing.csv&quot;, na.strings=c(&quot;NA&quot;,&quot;&quot;))
-Pred_nb &lt;- predict(Model_nb, newdata=pmltesting)</code></pre>
-<pre class="r"><code>Pred_nb</code></pre>
-<pre><code>##  [1] A A A A A E D C A A A A B A E A A B A B
+Pred_RF &lt;- predict(Model_RF, newdata=validation)</code></pre>
+<pre class="r"><code>Pred_RF</code></pre>
+<pre><code>##    [1] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##   [35] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##   [69] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [103] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [137] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [171] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [205] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [239] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [273] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [307] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [341] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [375] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [409] A A A A A A A A A A A A A A A A B A A A A A A A A A A A A A A A A A
+##  [443] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [477] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [511] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [545] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [579] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [613] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [647] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [681] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [715] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [749] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [783] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [817] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [851] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [885] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [919] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [953] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+##  [987] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+## [1021] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+## [1055] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
+## [1089] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A B B B B B
+## [1123] B B B B B B B B B B B A B B B B B B B B B B B B B B B B B B B B B B
+## [1157] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1191] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1225] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1259] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1293] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1327] B B B C B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1361] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1395] B B B B B B B B B B B B C B B B B B B B B B C B B B B B B B B B B B
+## [1429] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1463] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1497] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1531] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1565] B B B B B B B B B B B B B B B B A A A B B B B B B B B B B B B B B B
+## [1599] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1633] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1667] B B B B B B B B B B B B B B B B B B B B B B B B C B B B B B B B B B
+## [1701] B B B A A B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1735] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1769] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1803] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
+## [1837] B B B B B B B B B B B B B B B B B B B B B C C B B B B B B B B B B B
+## [1871] B B B B B C C C B B B C C C C C C C C C C C C C C C C C C C C C C C
+## [1905] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
+## [1939] C C C C C C C C C C C B B B B C C C C C C C C C C C C C C C C C C C
+## [1973] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
+## [2007] C C C C C C C C C C C C C C C C C C B C C C C C C C C C C C C C C C
+## [2041] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
+## [2075] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
+## [2109] C C C C C C C C C C C C C C C C C B C C C C C C C C C C C C C C C C
+## [2143] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
+## [2177] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
+## [2211] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
+## [2245] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
+## [2279] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
+## [2313] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
+## [2347] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
+## [2381] C C C B B B C C C C C C C C C C C C C C C C C C C C C C C C C C C C
+## [2415] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
+## [2449] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
+## [2483] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
+## [2517] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
+## [2551] C C C C C C C C C D D D D D D D D D D D D D D D D D D D D D D D D D
+## [2585] D D D D D D D D C C D D C C D D D D D D D D D D D D D D D D D D D D
+## [2619] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
+## [2653] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
+## [2687] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
+## [2721] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
+## [2755] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
+## [2789] D D D D D D D D D D D D D D D D D D D D D D C C D D D D D D D D D D
+## [2823] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
+## [2857] D D D D D D D D D D D D D D D D C D C D D D D D D D D D D D D D D D
+## [2891] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
+## [2925] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
+## [2959] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
+## [2993] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
+## [3027] D D D D D D D D D D D D D D D D D D D D D D D D D C D D D D D C C C
+## [3061] D D D D D D C C D D D D D D D D D D D D D D D D D D D D D D D D D D
+## [3095] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
+## [3129] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
+## [3163] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
+## [3197] D D D D D D E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3231] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3265] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3299] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3333] E E E E E E E C C E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3367] E E E E E E D E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3401] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3435] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3469] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3503] E E E E E E E E E E E E E E D E E E E E E E E E E E E E E E E E E E
+## [3537] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3571] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3605] E E E E D E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3639] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3673] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3707] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3741] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3775] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3809] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3843] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3877] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
+## [3911] E E E E E E E E E E E E E
 ## Levels: A B C D E</code></pre>
+<p>–</p>
 
 
 </div>
