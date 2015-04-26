@@ -56,12 +56,13 @@ Since the result for every variable is "FALSE", none of the remaining variables 
 After that the dataset can be divided into a training (60% of the total dataset), a testing set (20% of the total dataset) and a validation set (20% of the total dataset). The training set will be used to train the models, the testing set will be used to compare the models to each other and the validation set to calculate the out of sample error.
 
 ```{r,results="hide", warning=FALSE, message=FALSE}
+set.seed(32323)
 inTrain <- createDataPartition(y=pmltraining$classe, p=0.60, list=FALSE)
 training <- pmltraining[inTrain,]
 remaining <- pmltraining[-inTrain,]
-inValidation <- createDataPartition(y=remaining$classe, p=0.50, list=FALSE)
-validation <- remaining[inValidation,]
-testing <- remaining[-inValidation,]
+inTest <- createDataPartition(y=remaining$classe, p=0.50, list=FALSE)
+testing <- remaining[inTest,]
+validation <- remaining[-inTest,]
 ```
 
 Then several models are built, using different methods: classification tree, random forest, linear discriminant analysis, naive bayes and gradient boosting method. For all of them k-fold cross-validation (k=8) is used as resampling method and they are all calculated once without preprocessing and once with preprocessing.
@@ -94,7 +95,7 @@ PredPP_RF <- predict(ModelPP_RF, newdata=training);AccPP_RF <- sum(PredPP_RF == 
 PredPP_lda <- predict(ModelPP_lda, newdata=training);AccPP_lda <- sum(PredPP_lda == training$classe)/length(PredPP_lda)
 PredPP_gbm <- predict(ModelPP_gbm, newdata=training);AccPP_gbm <- sum(PredPP_gbm == training$classe)/length(PredPP_gbm)
 PredPP_nb <- predict(ModelPP_nb, newdata=training);AccPP_nb <- sum(PredPP_nb == training$classe)/length(PredPP_nb)
-TrainAccurracies <- matrix(c(Acc_Tree,Acc_RF,Acc_lda,Acc_gbm,Acc_nb,AccPP_Tree,AccPP_RF,AccPP_lda,AccPP_gbm,AccPP_nb), ncol = 5)
+TrainAccurracies <- matrix(c(Acc_Tree,AccPP_Tree,Acc_RF,AccPP_RF,Acc_lda,AccPP_lda,Acc_gbm,AccPP_gbm,Acc_nb,AccPP_nb), ncol = 5)
 colnames(TrainAccurracies) <- c("classification tree", "random forest", "linear discriminant analysis", "naive bayes", "gradient boosting method")
 rownames(TrainAccurracies) <- c("accuracy without preProcessing (training set)","accuracy with preProcessing (training set)")
 ```
@@ -115,7 +116,7 @@ PredPP_RF <- predict(ModelPP_RF, newdata=testing);AccPP_RF <- sum(PredPP_RF == t
 PredPP_lda <- predict(ModelPP_lda, newdata=testing);AccPP_lda <- sum(PredPP_lda == testing$classe)/length(PredPP_lda)
 PredPP_gbm <- predict(ModelPP_gbm, newdata=testing);AccPP_gbm <- sum(PredPP_gbm == testing$classe)/length(PredPP_gbm)
 PredPP_nb <- predict(ModelPP_nb, newdata=testing);AccPP_nb <- sum(PredPP_nb == testing$classe)/length(PredPP_nb)
-TestAccurracies <- matrix(c(Acc_Tree,Acc_RF,Acc_lda,Acc_gbm,Acc_nb,AccPP_Tree,AccPP_RF,AccPP_lda,AccPP_gbm,AccPP_nb), ncol = 5)
+TestAccurracies <- matrix(c(Acc_Tree,AccPP_Tree,Acc_RF,AccPP_RF,Acc_lda,AccPP_lda,Acc_gbm,AccPP_gbm,Acc_nb,AccPP_nb), ncol = 5)
 colnames(TestAccurracies) <- c("classification tree", "random forest", "linear discriminant analysis", "naive bayes", "gradient boosting method")
 rownames(TestAccurracies) <- c("accuracy without preProcessing (testing set)","accuracy with preProcessing (testing set)")
 ```
@@ -123,22 +124,22 @@ rownames(TestAccurracies) <- c("accuracy without preProcessing (testing set)","a
 TestAccurracies
 ```
 
-Now one can see, even based on the accuracy in the training set, classification tree without preprocessing, random forest without preprocessing, linear discriminant analysis (with or without preprocessing), naive bayes with preprocessing and gradient boosting method with preprocessing can already eliminated due to worse results. Naive bayes without preprocessing gives the highest accuracy for the testing set and is thus considered to be the best model. Hence, this model will be used to predict the output based on the given test set. First the out of sample error is calculated using the validation set:
+Now one can see, even based on the accuracy in the training set, classification tree (with or without preprocessing), linear discriminant analysis (with or without preprocessing), gradient boosting method (with or without preprocessing) can already eliminated due to worse results. Naive bayes without preprocessing gives the highest accuracy for the testing set and is thus considered to be the best model. Hence, this model will be used to predict the output based on the given test set. First the out of sample error is calculated:
 
 ```{r,results="hide", warning=FALSE, message=FALSE}
-Pred_nb <- predict(Model_nb, newdata=validation);Acc_nb <- sum(Pred_nb == validation$classe)/length(Pred_nb)
-OutOfSampleError <- 1-Acc_nb
+Pred_RF <- predict(Model_RF, newdata=validation);Acc_RF <- sum(Pred_RF == validation$classe)/length(Pred_RF)
+OutOfSampleError <- 1-Acc_RF
 ```
 ```{r}
 OutOfSampleError
 ```
 
-Now the given test set can be loaded and the model can be used to make the predictions based on this test set.
+Now the given test set can be loaded and the last model can be used to make the predictions based on this test set.
 ```{r,results="hide", warning=FALSE, message=FALSE}
 pmltesting = read.csv("pml-testing.csv", na.strings=c("NA",""))
-Pred_nb <- predict(Model_nb, newdata=pmltesting)
+Pred_RF <- predict(Model_RF, newdata=pmltesting)
 ```
 ```{r}
-Pred_nb
+Pred_RF
 ```
-
+ --
